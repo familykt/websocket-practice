@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>WebSocket Frame Layout</title>
+<!-- Composition: Editorial spread (1/4 : 3/4). Left column = giant hex "81 85", right column = typeset bit table, length tiers, XOR table. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,900;1,9..144,400&family=Libre+Franklin:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@700;900&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --canvas-w: 1920px; --canvas-h: 1080px;
+  --bg:#FAF7F2; --surface-2:#E3DCCC;
+  --ink:#20242C; --ink-muted:#5E636B;
+  --accent:#A32035; --chart-2:#0D7F63; --chart-3:#B07C1F;
+  --font-display:'Fraunces','Noto Serif JP',serif;
+  --font-body:'Libre Franklin','Noto Sans JP',sans-serif;
+  --font-code:'IBM Plex Mono',monospace;
+  --space-1:8px; --space-2:16px; --space-3:24px; --space-4:48px; --space-5:72px;
+}
+html, body { background: var(--bg); }
+body { width: var(--canvas-w); font-family: var(--font-body); color: var(--ink); }
+.canvas { width: var(--canvas-w); height: var(--canvas-h); overflow: hidden; display: flex; padding: var(--space-5); gap: var(--space-5); }
+
+.left { width: 520px; display: flex; flex-direction: column; border-right: 1px solid var(--ink); padding-right: var(--space-4); }
+.kicker { font: 600 16px/1 var(--font-body); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-muted); }
+h1 { font: 900 60px/1.2 var(--font-display); letter-spacing: -0.01em; margin-top: var(--space-3); padding-bottom: var(--space-3); border-bottom: 3px solid var(--ink); }
+.standfirst { font: italic 400 26px/1.5 var(--font-display); margin-top: var(--space-3); color: var(--ink-muted); }
+.hero { margin-top: auto; }
+.hero .num { font: 900 200px/0.9 var(--font-display); letter-spacing: -0.04em; margin-left: -8px; white-space: nowrap; }
+.hero .lbl { font: 600 20px/1.4 var(--font-body); letter-spacing: .06em; margin-top: var(--space-2); }
+.hero .sub { font: 400 20px/1.5 var(--font-body); color: var(--ink-muted); margin-top: var(--space-1); }
+
+.right { flex: 1; display: flex; flex-direction: column; }
+.folio { display: flex; justify-content: space-between; font: 600 16px/1 var(--font-body); letter-spacing: .1em; text-transform: uppercase; color: var(--ink-muted); padding-bottom: var(--space-2); border-bottom: 1px solid var(--ink); }
+.sec { font: 600 16px/1 var(--font-body); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-muted); }
+
+/* bit table */
+.bits-wrap { margin-top: var(--space-4); }
+.bytes, .bits, .names { display: grid; grid-template-columns: repeat(16, 1fr); }
+.bytes { margin-top: var(--space-2); }
+.bytes div { font: 500 18px/1 var(--font-code); padding-bottom: 10px; border-bottom: 3px solid var(--ink); margin-right: 6px; }
+.bytes div + div { margin-left: 0; }
+.bits div { font: 500 40px/1 var(--font-code); text-align: center; padding: 18px 0; border-left: 1px solid var(--ink-muted); }
+.bits div:first-child, .bits div:nth-child(9) { border-left: 1px solid var(--ink); }
+.bits { border-bottom: 1px solid var(--ink); }
+.bits .on { background: var(--surface-2); }
+.names div { padding: 12px 8px 0 0; border-left: 1px solid var(--ink); font: 600 17px/1.3 var(--font-body); }
+.names div span { display: block; font-weight: 400; color: var(--ink-muted); font-size: 16px; margin-top: 4px; }
+.names .acc { color: var(--accent); }
+.names .acc span { color: var(--ink-muted); }
+
+/* lower two columns */
+.lower { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-4); }
+.row { padding: 18px 0; border-bottom: 1px solid var(--ink); }
+.row .t { font: 500 18px/1.4 var(--font-body); }
+.seg { display: flex; margin-top: 10px; height: 30px; }
+.seg i { display: block; height: 30px; }
+.s-base { background: var(--ink); }
+.s-ext { background: var(--chart-3); }
+.s-mask { background: var(--accent); }
+.row .n { font: 400 16px/1.4 var(--font-body); color: var(--ink-muted); margin-top: 8px; }
+.legend { display: flex; gap: var(--space-3); margin-top: var(--space-2); font: 400 16px/1 var(--font-body); color: var(--ink-muted); }
+.legend b { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -1px; }
+
+.xor { margin-top: var(--space-2); }
+.xr { display: grid; grid-template-columns: 110px repeat(5, 1fr); gap: 6px; align-items: center; margin-bottom: 8px; }
+.xr .l { font: 500 16px/1.2 var(--font-body); color: var(--ink-muted); }
+.xr div.c { font: 500 26px/1 var(--font-code); text-align: center; padding: 12px 0; border: 1px solid var(--ink); }
+.xr.mk div.c { background: var(--surface-2); }
+.xr.res div.c { border-width: 3px; }
+.xr.ch div.c { border: none; border-bottom: 3px solid var(--accent); font-family: var(--font-display); font-weight: 900; font-size: 34px; padding: 6px 0; }
+.foot { margin-top: auto; display: flex; justify-content: space-between; font: 400 17px/1.5 var(--font-body); color: var(--ink-muted); border-top: 1px solid var(--ink); padding-top: var(--space-2); }
+</style>
+</head>
+<body>
+<div class="canvas">
+
+  <section class="left">
+    <div class="kicker">FIG.02 · Frame Layout</div>
+    <h1>フレーム構造</h1>
+    <p class="standfirst">先頭 2 バイトの固定ヘッダーに、必要なときだけ可変フィールドが付く。</p>
+    <div class="hero">
+      <div class="num" data-hero>81<span style="margin-left:28px">85</span></div>
+      <div class="lbl">Hello を送るときの先頭 2 バイト</div>
+      <div class="sub">0x81 = 最終フレームの Text、0x85 = マスクあり・長さ 5</div>
+    </div>
+  </section>
+
+  <section class="right">
+    <div class="folio"><span>Frame · read_frame / encode_frame</span><span>2 / 3</span></div>
+
+    <div class="bits-wrap">
+      <div class="sec">先頭 2 バイト（ブラウザ → サーバーの例）</div>
+      <div class="bytes"><div style="grid-column: span 8">BYTE 0 = 0x81</div><div style="grid-column: span 8">BYTE 1 = 0x85</div></div>
+      <div class="bits">
+        <div class="on">1</div><div>0</div><div>0</div><div>0</div><div>0</div><div>0</div><div>0</div><div class="on">1</div>
+        <div class="on">1</div><div>0</div><div>0</div><div>0</div><div>0</div><div class="on">1</div><div>0</div><div class="on">1</div>
+      </div>
+      <div class="names">
+        <div style="grid-column: span 1">FIN<span>最後</span></div>
+        <div style="grid-column: span 3">RSV 1-3<span>通常は 0</span></div>
+        <div style="grid-column: span 4">OPCODE<span>0x1 = Text</span></div>
+        <div class="acc" style="grid-column: span 1">MASK<span>1 = あり</span></div>
+        <div style="grid-column: span 7">PAYLOAD LEN（7 bit）<span>5 = “Hello” の長さ</span></div>
+      </div>
+    </div>
+
+    <div class="lower">
+      <div>
+        <div class="sec">長さフィールドの 3 段階（クライアント → サーバー）</div>
+        <div class="row">
+          <div class="t">0〜125 バイト：7 bit にそのまま入る</div>
+          <div class="seg"><i class="s-base" style="width:88px"></i><i class="s-mask" style="width:176px"></i></div>
+          <div class="n">ヘッダー 6 バイト（基本 2 + マスクキー 4）</div>
+        </div>
+        <div class="row">
+          <div class="t">126〜65,535 バイト：7 bit = 126、続く 2 バイトが長さ</div>
+          <div class="seg"><i class="s-base" style="width:88px"></i><i class="s-ext" style="width:88px"></i><i class="s-mask" style="width:176px"></i></div>
+          <div class="n">ヘッダー 8 バイト</div>
+        </div>
+        <div class="row">
+          <div class="t">65,536 バイト以上：7 bit = 127、続く 8 バイトが長さ</div>
+          <div class="seg"><i class="s-base" style="width:88px"></i><i class="s-ext" style="width:352px"></i><i class="s-mask" style="width:176px"></i></div>
+          <div class="n">ヘッダー 14 バイト</div>
+        </div>
+        <div class="legend"><span><b class="s-base"></b>基本 2B</span><span><b class="s-ext"></b>拡張長さ</span><span><b class="s-mask"></b>マスクキー 4B</span></div>
+      </div>
+
+      <div>
+        <div class="sec">マスク解除（XOR）</div>
+        <div class="xor">
+          <div class="xr"><span class="l">受信データ</span><div class="c">7f</div><div class="c">9f</div><div class="c">4d</div><div class="c">51</div><div class="c">58</div></div>
+          <div class="xr mk"><span class="l">マスクキー</span><div class="c">37</div><div class="c">fa</div><div class="c">21</div><div class="c">3d</div><div class="c">37</div></div>
+          <div class="xr res"><span class="l">XOR の結果</span><div class="c">48</div><div class="c">65</div><div class="c">6c</div><div class="c">6c</div><div class="c">6f</div></div>
+          <div class="xr ch"><span class="l">文字</span><div class="c">H</div><div class="c">e</div><div class="c">l</div><div class="c">l</div><div class="c">o</div></div>
+        </div>
+        <p style="font:400 17px/1.6 var(--font-body);color:var(--ink-muted);margin-top:16px">各バイトを、キーの i mod 4 番目と XOR する。<br>ブラウザ → サーバーは必ずマスクあり。<br>サーバー → ブラウザはマスクしない。</p>
+      </div>
+    </div>
+
+    <div class="foot"><span>値は RFC 6455 の例。Ruby で XOR を再計算し、一致を確認済み。</span><span>最初の 2 バイトだけで「何が・何バイト続くか」が決まる</span></div>
+  </section>
+
+</div>
+</body>
+</html>

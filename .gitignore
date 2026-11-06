@@ -1,0 +1,25 @@
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+.ruby-lsp/
+
+# Ruby / Bundler
+.bundle/
+vendor/bundle/
+*.gem
+
+# Rails
+rails/log/*
+!rails/log/.keep
+rails/tmp/*
+!rails/tmp/.keep
+rails/storage/*
+!rails/storage/.keep
+rails/public/assets
+rails/config/master.key
+rails/config/credentials/*.key
+
+# Env / secrets
+.env*
+!.env.example

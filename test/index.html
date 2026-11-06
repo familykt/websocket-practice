@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>test</title>
+</head>
+<body>
+  <h1>test</h1>
+
+  <input id="msg" placeholder="message">
+  <button id="send">send</button>
+  <ul id="log"></ul>
+
+  <script>
+    const log = (t) => document.getElementById('log').append(Object.assign(document.createElement('li'), { textContent: t }));
+    const ws = new WebSocket('ws://127.0.0.1:3000');
+    ws.onopen = () => log('connected');
+    ws.onmessage = (e) => log('received: ' + e.data);
+    ws.onclose = () => log('closed');
+    document.getElementById('send').onclick = () => {
+      const m = document.getElementById('msg');
+      if (m.value) { ws.send(m.value); m.value = ''; }
+    };
+  </script>
+</body>
+</html>
