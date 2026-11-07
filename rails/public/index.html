@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>test (rails)</title>
+  <style>
+    table { border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #ccc; padding: 4px 10px; text-align: left; }
+    th { background: #f3f3f3; }
+  </style>
+</head>
+<body>
+  <h1>test (rails)</h1>
+
+  <input id="msg" placeholder="message">
+  <button id="send">send</button>
+
+  <table>
+    <thead><tr><th>time</th><th>dir</th><th>type</th><th>content</th></tr></thead>
+    <tbody id="log"></tbody>
+  </table>
+
+  <script>
+    const row = (dir, type, content = '') => {
+      const tr = document.createElement('tr');
+      [new Date().toLocaleTimeString(), dir, type, content].forEach((v) => {
+        tr.append(Object.assign(document.createElement('td'), { textContent: v }));
+      });
+      document.getElementById('log').append(tr);
+    };
+
+    const identifier = JSON.stringify({ channel: 'ChatChannel' });
+    const ws = new WebSocket(`ws://${location.host}/cable`, 'actioncable-v1-json');
+
+    ws.onopen = () => {
+      row('-', 'open');
+      ws.send(JSON.stringify({ command: 'subscribe', identifier }));
+      row('send', 'subscribe', 'ChatChannel');
+    };
+    ws.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      if (d.type === 'ping') return;
+      row('recv', d.type || 'message', d.message ? JSON.stringify(d.message) : '');
+    };
+    ws.onclose = () => row('-', 'close');
+
+    document.getElementById('send').onclick = () => {
+      const m = document.getElementById('msg');
+      if (m.value) {
+        ws.send(JSON.stringify({ command: 'message', identifier, data: JSON.stringify({ text: m.value }) }));
+        row('send', 'message', m.value);
+        m.value = '';
+      }
+    };
+  </script>
+</body>
+</html>

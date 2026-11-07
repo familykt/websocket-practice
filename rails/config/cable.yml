@@ -1,0 +1,5 @@
+development:
+  adapter: async
+
+production:
+  adapter: async
